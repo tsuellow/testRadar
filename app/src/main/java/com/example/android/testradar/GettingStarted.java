@@ -12,6 +12,7 @@ import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
+
 //import com.example.android.testradar.mapfile.MapFileTileSource;
 
 import org.oscim.android.MapView;
@@ -45,7 +46,7 @@ public class GettingStarted extends Activity implements LocationListener {
     private MapScaleBar mapScaleBar;
 
     private Map mMap;
-
+    private LocationLayer theoLocationLayer;
     private LocationLayer locationLayer;
     private LocationManager locationManager;
     private final MapPosition mapPosition = new MapPosition();
@@ -65,7 +66,7 @@ public class GettingStarted extends Activity implements LocationListener {
         String mapPath = new File(Environment.getExternalStorageDirectory(), MAP_FILE).getAbsolutePath();
 
         tileSource.setMapFile(mapPath);
-
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         if (tileSource.setMapFile(mapPath)) {
 
@@ -87,14 +88,23 @@ public class GettingStarted extends Activity implements LocationListener {
             mapScaleBarLayer.getRenderer().setPosition(GLViewport.Position.BOTTOM_LEFT);
             mapScaleBarLayer.getRenderer().setOffset(5 * CanvasAdapter.getScale(), 0);
             mapView.map().layers().add(mapScaleBarLayer);
-
+            if (ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED) {
+                Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                mapView.map().setMapPosition(loc.getLatitude(),loc.getLongitude(), 1<<15);
+            }
             // Note: this map position is specific to Berlin area
-            //mapView.map().setMapPosition(52.3759, 9.7320, 1 << 12);
+
+
         }
 
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        theoLocationLayer = new LocationLayer(mapView.map());
+        theoLocationLayer.locationRenderer.setShader("location_1_reverse");
+        theoLocationLayer.setEnabled(true);
+        theoLocationLayer.setPosition(52.394 , 9.7417026 , 19.915);
 
 
+        mapView.map().layers().add(theoLocationLayer);
 
         locationLayer = new LocationLayer(mapView.map());
         locationLayer.locationRenderer.setShader("location_1_reverse");
@@ -131,11 +141,12 @@ public class GettingStarted extends Activity implements LocationListener {
     public void onLocationChanged(Location location) {
         locationLayer.setEnabled(true);
         locationLayer.setPosition(location.getLatitude(), location.getLongitude(), location.getAccuracy());
+        Log.d("andres_lat_long", ""+location.getLatitude()+" , "+location.getLongitude()+" , "+location.getAccuracy());
 
         // Follow location
-        mapView.map().getMapPosition(mapPosition);
-        mapPosition.setPosition(location.getLatitude(), location.getLongitude());
-        mapView.map().setMapPosition(mapPosition);
+//        mapView.map().getMapPosition(mapPosition);
+//        mapPosition.setPosition(location.getLatitude(), location.getLongitude());
+        //mapView.map().setMapPosition(mapPosition);
 
     }
 
