@@ -93,8 +93,6 @@ public class GettingStarted extends Activity implements LocationListener {
                 mapView.map().setMapPosition(loc.getLatitude(),loc.getLongitude(), 1<<15);
             }
             // Note: this map position is specific to Berlin area
-
-
         }
 
 
