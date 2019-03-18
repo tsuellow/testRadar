@@ -122,7 +122,7 @@ public class GettingStarted extends Activity implements LocationListener {
         mapView.map().layers().add(locationLayer);
 
     }
-//test  fhfg
+//test  fhfg gn
     @Override
     protected void onResume() {
         super.onResume();
