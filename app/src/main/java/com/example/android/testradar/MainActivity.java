@@ -64,6 +64,8 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         LinearLayout linearLayout = findViewById(R.id.samples);
         linearLayout.addView(createButton(GettingStarted.class));
+        linearLayout.addView(createButton(GettingStartedMarker.class));
+        linearLayout.addView(createButton(GettingStartedVector.class));
         linearLayout.addView(createLabel(null));
 
         ActivityCompat.requestPermissions(MainActivity.this, new String[]{READ_EXTERNAL_STORAGE,ACCESS_FINE_LOCATION, WRITE_EXTERNAL_STORAGE},THIS_REQUEST_CODE);

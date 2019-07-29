@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <!-- drawable/circle_card_icon.xml -->
+        <shape xmlns:android="http://schemas.android.com/apk/res/android"
+            android:shape="rectangle">
+            <solid android:color="#000000"/>
+            <size
+                android:width="48dp"
+                android:height="48dp"
+                />
+        </shape>
+    </item>
+    <item
+        android:gravity="center">
+        <!-- drawable/circle_card_icon.xml -->
+        <shape xmlns:android="http://schemas.android.com/apk/res/android"
+            android:shape="oval">
+            <solid android:color="#8df"/>
+            <size
+                android:width="40dp"
+                android:height="40dp"
+                />
+        </shape>
+
+    </item>
+    <item android:drawable="@drawable/taxi_icon"
+        android:height="28dp"
+        android:width="28dp"
+        android:gravity="center_horizontal"
+        android:top="6dp"/>
+</layer-list>

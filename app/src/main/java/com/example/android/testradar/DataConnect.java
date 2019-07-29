@@ -22,6 +22,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 
 public class DataConnect {
@@ -87,19 +88,6 @@ public class DataConnect {
     }
 
     public void findAndres(final LocationLayer locationLayer){
-        //JSONObject params=new JSONObject();
-//        try {
-//            params.put("userid", positionObject.getUserid());
-//            params.put("lat", positionObject.getLat());
-//            params.put("lon", positionObject.getLon());
-//            params.put("acc", positionObject.getAcc());
-//            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//            String currentTime = simpleDateFormat.format(positionObject.getTime());
-//            params.put("time", currentTime);
-//
-//        }catch (JSONException e){
-//            e.printStackTrace();
-//        }
 
         JsonArrayRequest jsonArrayRequest;
         jsonArrayRequest = new JsonArrayRequest
@@ -109,7 +97,7 @@ public class DataConnect {
                         try {
                             for(int i=0; i<response.length(); i++){
                                 JSONObject jresponse = response.getJSONObject(i);
-                                if (jresponse.getInt("userid") == 2){
+                                if (jresponse.getInt("userid") == 1){
                                     locationLayer.setPosition(jresponse.getDouble("lat"),jresponse.getDouble("lon"),jresponse.getDouble("acc"));
                                 }
                             }
@@ -130,6 +118,50 @@ public class DataConnect {
                     }
                 });
         MySingleton.getInstance(mContext).addToRequestQueue(jsonArrayRequest);
+    }
+
+    public void getTaxiData(){
+
+        JsonArrayRequest jsonArrayRequest;
+        jsonArrayRequest = new JsonArrayRequest
+                (Request.Method.POST, "https://www.awicon.de/theostaxi/php/gettest.php", null, new Response.Listener<JSONArray>() {
+                    @Override
+                    public void onResponse(JSONArray response) {
+                        try {
+                            TaxiMarker[] taxiMarkers=new TaxiMarker[response.length()];
+                            for(int i=0; i<response.length(); i++){
+                                JSONObject jresponse = response.getJSONObject(i);
+                                taxiMarkers[i]=new TaxiMarker(jresponse.getInt("userid"),jresponse.getDouble("lat"),jresponse.getDouble("lon"),(float)jresponse.getDouble("acc"),new Date());
+
+                            }
+                            mTaxiDataListener.onTaxiDataArrived(taxiMarkers);
+
+                        }catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+
+                        //locationLayer.setPosition();
+
+                        Log.d("andres_json_response", "OK");
+                    }
+                }, new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+
+                    }
+                });
+        MySingleton.getInstance(mContext).addToRequestQueue(jsonArrayRequest);
+    }
+
+    public interface OnTaxiDataListener{
+        void onTaxiDataArrived(TaxiMarker[] taxiArray);
+    }
+
+    OnTaxiDataListener mTaxiDataListener;
+
+    public void setOnTaxiDataListener(OnTaxiDataListener listener){
+        this.mTaxiDataListener=listener;
     }
 
 

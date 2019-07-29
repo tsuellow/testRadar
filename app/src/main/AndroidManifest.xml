@@ -29,6 +29,16 @@
             android:name=".GettingStarted"
             android:exported="true"
             android:configChanges="keyboardHidden|orientation|screenSize" />
+        <activity
+            android:label="test"
+            android:name=".GettingStartedMarker"
+            android:exported="true"
+            android:configChanges="keyboardHidden|orientation|screenSize" />
+        <activity
+            android:label="test"
+            android:name=".GettingStartedVector"
+            android:exported="true"
+            android:configChanges="keyboardHidden|orientation|screenSize" />
     </application>
 
 </manifest>

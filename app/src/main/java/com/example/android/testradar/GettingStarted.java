@@ -42,13 +42,12 @@ import java.util.Date;
  */
 public class GettingStarted extends Activity implements LocationListener {
     // Name of the map file in device storage
-    private static final String MAP_FILE = "janofa.map";
+    private static final String MAP_FILE = "nica.map";
 
     private MapView mapView;
     private MapScaleBar mapScaleBar;
     private Context mContext;
 
-    private Map mMap;
     private LocationLayer andresLocationLayer;
     private LocationLayer locationLayer;
     private LocationManager locationManager;
@@ -159,7 +158,7 @@ public class GettingStarted extends Activity implements LocationListener {
         Log.d("andres_lat_long", ""+location.getLatitude()+" , "+location.getLongitude()+" , "+location.getAccuracy());
         DataConnect dataConnect = new DataConnect(mContext);
         Date date = new Date();
-        PositionObject positionObject = new PositionObject(1, location.getLatitude(), location.getLongitude(), location.getAccuracy(), date);
+        PositionObject positionObject = new PositionObject(2, location.getLatitude(), location.getLongitude(), location.getAccuracy(), date);
 
         dataConnect.syncPosition(positionObject);
 
