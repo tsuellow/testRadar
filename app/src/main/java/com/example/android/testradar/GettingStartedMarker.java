@@ -25,7 +25,6 @@ import org.oscim.core.MapPosition;
 import org.oscim.event.Event;
 import org.oscim.layers.tile.buildings.BuildingLayer;
 import org.oscim.layers.tile.vector.VectorTileLayer;
-import org.oscim.layers.tile.vector.labeling.LabelLayer;
 import org.oscim.map.Map;
 import org.oscim.renderer.GLViewport;
 import org.oscim.scalebar.DefaultMapScaleBar;
@@ -53,7 +52,6 @@ import org.oscim.layers.marker.MarkerSymbol.HotspotPlace;
 //import org.oscim.tiling.source.OkHttpEngine;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -446,6 +444,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
             }
             if (e==Map.MOVE_EVENT){
                 backToCenterImage.setVisibility(ImageView.VISIBLE);
+                bullseyeAnim();
                 wasMoved=true;
                 rescheduleTimer();
             }
@@ -473,15 +472,30 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     private class MyTimerClass extends TimerTask{
         @Override
         public void run() {
-            wasMoved=false;
-            smoothenMapMovement(mCurrLocation,mLocation,endLocation);
+            backToCenter();
         }
     };
 
-    private void onBullseyeClicked(){
+    private void backToCenter(){
         wasMoved=false;
-        mTimer.cancel();
         smoothenMapMovement(mCurrLocation,mLocation,endLocation);
+        backToCenterImage.setVisibility(ImageView.INVISIBLE);
+        mTimer.cancel();
+    }
+
+
+
+    private void bullseyeAnim(){
+        Drawable d = backToCenterImage.getDrawable();
+        if (d instanceof AnimatedVectorDrawableCompat){
+            AnimatedVectorDrawableCompat adv = (AnimatedVectorDrawableCompat) d;
+            adv.stop();
+            adv.start();
+        } else if (d instanceof AnimatedVectorDrawable){
+            AnimatedVectorDrawable adv = (AnimatedVectorDrawable) d;
+            adv.stop();
+            adv.start();
+        }
     }
 
 private MarkerSymbol addCircleOnClick(Drawable drawable){
@@ -608,18 +622,7 @@ private MarkerSymbol addCircleOnClick(Drawable drawable){
         return false;
     }
 
-    public void backToCenter(){
-        Drawable d = backToCenterImage.getDrawable();
-        if (d instanceof AnimatedVectorDrawableCompat){
-            AnimatedVectorDrawableCompat adv = (AnimatedVectorDrawableCompat) d;
-            adv.start();
-        } else if (d instanceof AnimatedVectorDrawable){
-            AnimatedVectorDrawable adv = (AnimatedVectorDrawable) d;
-            adv.start();
-        }
-        onBullseyeClicked();
-        backToCenterImage.setVisibility(ImageView.INVISIBLE);
-    }
+
 
 
 }
