@@ -23,6 +23,7 @@ import org.oscim.core.MapPosition;
 import org.oscim.event.Event;
 import org.oscim.layers.tile.buildings.BuildingLayer;
 import org.oscim.layers.tile.vector.VectorTileLayer;
+import org.oscim.layers.tile.vector.labeling.LabelLayer;
 import org.oscim.map.Map;
 import org.oscim.renderer.GLViewport;
 import org.oscim.scalebar.DefaultMapScaleBar;
@@ -50,6 +51,8 @@ import org.oscim.layers.marker.MarkerSymbol.HotspotPlace;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import static org.oscim.android.canvas.AndroidGraphics.drawableToBitmap;
 
@@ -246,7 +249,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         }else {
             itemizedLayer.addItem(taxiMarker);
         }
-        itemizedLayer.populate();
+        itemizedLayer.populate();//???
 
 //        itemizedLayer.removeAllItems();
 //        List<TaxiMarker> arrayOfOne = new ArrayList<>();
@@ -426,6 +429,11 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
                 mCurrLocation.setLatitude(mapView.map().getMapPosition().getLatitude());
                 mCurrLocation.setLongitude(mapView.map().getMapPosition().getLongitude());
                // Toast.makeText(mContext,"currPos: "+mapPosition.getLatitude()+" "+mCurrLocation.getLatitude(),Toast.LENGTH_LONG).show();
+
+            }
+            if (e==Map.MOVE_EVENT){
+                wasMoved=true;
+                rescheduleTimer();
             }
             if(e == Map.SCALE_EVENT || e == Map.ANIM_END) {
                 double scale = mapPosition.getZoom();
@@ -438,6 +446,28 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
             }
         }
 
+    }
+
+    public void rescheduleTimer(){
+        mTimer.cancel();
+        mTimer=new Timer("movementTimer",true);
+        MyTimerClass timerTask=new MyTimerClass();
+        mTimer.schedule(timerTask,15000);
+    }
+
+    private Timer mTimer=new Timer("movementTimer",true);
+    private class MyTimerClass extends TimerTask{
+        @Override
+        public void run() {
+            wasMoved=false;
+            smoothenMapMovement(mCurrLocation,mLocation,endLocation);
+        }
+    };
+
+    private void onBullseyeClicked(){
+        wasMoved=false;
+        mTimer.cancel();
+        smoothenMapMovement(mCurrLocation,mLocation,endLocation);
     }
 
 private MarkerSymbol addCircleOnClick(Drawable drawable){
@@ -484,6 +514,7 @@ private MarkerSymbol addCircleOnClick(Drawable drawable){
     }
 
     private Location endLocation=new Location("");
+    private boolean wasMoved=false;
 
     private void smoothenMapMovement(Location initialMap, Location initialTaxi, final Location end){
         double latDiffMap=end.getLatitude()-initialMap.getLatitude();
@@ -506,10 +537,17 @@ private MarkerSymbol addCircleOnClick(Drawable drawable){
                 @Override
                 public void run() {
                     if (end==endLocation) {
-                        //move map
-                        mapView.map().viewport().setMapPosition(new MapPosition(latMap, lonMap, mScale));
-                        mapView.map().viewport().setTilt(mTilt);
-                        mapView.map().viewport().setRotation(-mCompass.getRotation());
+
+                        if (!wasMoved) {
+                            //move map
+                            mapView.map().viewport().setMapPosition(new MapPosition(latMap, lonMap, mScale));
+                            mapView.map().viewport().setTilt(mTilt);
+                            mapView.map().viewport().setRotation(-mCompass.getRotation());
+                            //reset anim initial values
+                            mCurrLocation.setLatitude(latMap);
+                            mCurrLocation.setLongitude(lonMap);
+                        }
+
                         //move taxi
                         createLayers(mMarkerLayer, loc, mCompass.getRotation());
                         Log.d("marker_error", "potential issue location changed");
@@ -517,8 +555,7 @@ private MarkerSymbol addCircleOnClick(Drawable drawable){
 
                         //reset anim initial values
                         mLocation=loc;
-                        mCurrLocation.setLatitude(latMap);
-                        mCurrLocation.setLongitude(lonMap);
+
                     }
 
                 }
