@@ -68,7 +68,8 @@ import static org.oscim.android.canvas.AndroidGraphics.drawableToBitmap;
  */
 public class GettingStartedMarker extends Activity implements LocationListener, ItemizedLayer.OnItemGestureListener<TaxiMarker>, SensorEventListener,  GestureListener {
     // Name of the map file in device storage
-    private static final String MAP_FILE = "janofa.map";
+    private static final String MAP_FILE = "nicaragua.map";
+    //private static final String MAP_FILE = "janofa.map";
 
     private MapView mapView;
     private MapScaleBar mapScaleBar;
@@ -194,6 +195,13 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
             @Override
             public void onTaxiDataArrived(TaxiMarker[] taxiArray) {
                 Toast.makeText(mContext, "your data just arrived"+taxiArray.length+", "+taxiArray[0].getTaxiId(),Toast.LENGTH_LONG).show();
+            }
+        });
+
+        backToCenterImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                backToCenter();
             }
         });
 
@@ -437,6 +445,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
 
             }
             if (e==Map.MOVE_EVENT){
+                backToCenterImage.setVisibility(ImageView.VISIBLE);
                 wasMoved=true;
                 rescheduleTimer();
             }
@@ -599,9 +608,8 @@ private MarkerSymbol addCircleOnClick(Drawable drawable){
         return false;
     }
 
-    public void backToCenter(View view){
-        ImageView v = (ImageView) view;
-        Drawable d = v.getDrawable();
+    public void backToCenter(){
+        Drawable d = backToCenterImage.getDrawable();
         if (d instanceof AnimatedVectorDrawableCompat){
             AnimatedVectorDrawableCompat adv = (AnimatedVectorDrawableCompat) d;
             adv.start();
@@ -609,6 +617,8 @@ private MarkerSymbol addCircleOnClick(Drawable drawable){
             AnimatedVectorDrawable adv = (AnimatedVectorDrawable) d;
             adv.start();
         }
+        onBullseyeClicked();
+        backToCenterImage.setVisibility(ImageView.INVISIBLE);
     }
 
 
