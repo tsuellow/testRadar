@@ -204,9 +204,20 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         });
         backToCenterImage.setVisibility(ImageView.INVISIBLE);
 
+        Drawable d = backToCenterImage.getDrawable();
+        if (d instanceof AnimatedVectorDrawableCompat){
+            advCompat = (AnimatedVectorDrawableCompat) d;
+        } else if (d instanceof AnimatedVectorDrawable){
+            adv = (AnimatedVectorDrawable) d;
+
+        }
+
 
 
     }
+
+    AnimatedVectorDrawableCompat advCompat;
+    AnimatedVectorDrawable adv;
 
 
 
@@ -495,11 +506,11 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     private void bullseyeAnim(){
         Drawable d = backToCenterImage.getDrawable();
         if (d instanceof AnimatedVectorDrawableCompat){
-            AnimatedVectorDrawableCompat adv = (AnimatedVectorDrawableCompat) d;
-            adv.stop();
-            adv.start();
+            //AnimatedVectorDrawableCompat advCompat = (AnimatedVectorDrawableCompat) d;
+            advCompat.stop();
+            advCompat.start();
         } else if (d instanceof AnimatedVectorDrawable){
-            AnimatedVectorDrawable adv = (AnimatedVectorDrawable) d;
+            //AnimatedVectorDrawable adv = (AnimatedVectorDrawable) d;
             adv.stop();
             adv.start();
         }
