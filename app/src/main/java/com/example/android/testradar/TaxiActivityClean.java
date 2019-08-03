@@ -130,6 +130,7 @@ public class TaxiActivityClean extends Activity implements LocationListener, Ite
         Bitmap bitmapPoi = drawableToBitmap(getResources().getDrawable(R.drawable.frame00));
         mSymbol = new MarkerSymbol(bitmapPoi, MarkerSymbol.HotspotPlace.CENTER, false);
 
+
         //add itemized layer to the mapview
         mMarkerLayer = new ItemizedLayer<>(mapView.map(), new ArrayList<TaxiMarker>(), mSymbol, this);
         mapView.map().layers().add(mMarkerLayer);
