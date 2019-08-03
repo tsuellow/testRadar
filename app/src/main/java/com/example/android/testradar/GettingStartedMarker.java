@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.Drawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -14,6 +15,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.graphics.drawable.AnimatedVectorDrawableCompat;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
@@ -33,6 +35,7 @@ import org.oscim.tiling.source.mapfile.MapFileTileSource;
 
 import java.io.File;
 
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -62,7 +65,7 @@ import static org.oscim.android.canvas.AndroidGraphics.drawableToBitmap;
  */
 public class GettingStartedMarker extends Activity implements LocationListener, ItemizedLayer.OnItemGestureListener<TaxiMarker>, SensorEventListener,  GestureListener {
     // Name of the map file in device storage
-    private static final String MAP_FILE = "nicaragua.map";
+    private static final String MAP_FILE = "janofa.map";
 
     private MapView mapView;
     private MapScaleBar mapScaleBar;
@@ -70,6 +73,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     private Location mLocation;
     private  Compass mCompass;
     private ImageView compassImage;
+    private ImageView backToCenterImage;
 
     private float mTilt;
     private double mScale;
@@ -111,6 +115,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         mapView= (MapView) findViewById(R.id.mapView);
 
         compassImage=(ImageView) findViewById(R.id.compass);
+        backToCenterImage=(ImageView) findViewById(R.id.back_to_center);
         mCompass=new Compass(this,mapView.map(),compassImage);
 
 
@@ -555,6 +560,18 @@ private MarkerSymbol addCircleOnClick(Drawable drawable){
     @Override
     public boolean onGesture(Gesture g, MotionEvent e) {
         return false;
+    }
+
+    public void backToCenter(View view){
+        ImageView v = (ImageView) view;
+        Drawable d = v.getDrawable();
+        if (d instanceof AnimatedVectorDrawableCompat){
+            AnimatedVectorDrawableCompat adv = (AnimatedVectorDrawableCompat) d;
+            adv.start();
+        } else if (d instanceof AnimatedVectorDrawable){
+            AnimatedVectorDrawable adv = (AnimatedVectorDrawable) d;
+            adv.start();
+        }
     }
 
 
