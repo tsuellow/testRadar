@@ -202,6 +202,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
                 backToCenter();
             }
         });
+        backToCenterImage.setVisibility(ImageView.INVISIBLE);
 
 
 
@@ -472,7 +473,13 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     private class MyTimerClass extends TimerTask{
         @Override
         public void run() {
-            backToCenter();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    backToCenter();
+                }
+            });
+
         }
     };
 
