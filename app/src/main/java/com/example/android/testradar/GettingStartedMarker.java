@@ -4,8 +4,10 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Canvas;
 import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ScaleDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -55,7 +57,7 @@ import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import static org.oscim.android.canvas.AndroidGraphics.drawableToBitmap;
+
 
 //import com.example.android.testradar.mapfile.MapFileTileSource;
 
@@ -77,6 +79,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     private ImageView compassImage;
     private ImageView backToCenterImage;
 
+
     private float mTilt;
     private double mScale;
 
@@ -94,6 +97,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     private LocationManager locationManager;
     private final MapPosition mapPosition = new MapPosition();
     MarkerSymbol[] mClickAnimationSymbols =new MarkerSymbol[19];
+    private MarkerSymbol[] mScaleSymbols=new MarkerSymbol[100];
 
     DataConnect dataConnect;
 
@@ -169,12 +173,19 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         mapView.map().layers().add(mCompass);
 
         mapView.map().layers().add(new MapEventsReceiver(mapView));
-        Bitmap bitmapPoi = drawableToBitmap(getResources().getDrawable(R.drawable.frame00));
+        Drawable icon=getResources().getDrawable(R.drawable.frame00);
+        Bitmap bitmapPoi = AndroidGraphicsCustom.drawableToBitmap(icon,200);
 
         for(int i=0;i<=18;i++){
             String name=(i<10)?"frame0":"frame";
             Drawable drawable=getResources().getDrawable(this.getResources().getIdentifier(name+i, "drawable", this.getPackageName()));
-            mClickAnimationSymbols[i]=addCircleOnClick(drawable);
+
+            mClickAnimationSymbols[i]=new MarkerSymbol(AndroidGraphicsCustom.drawableToBitmap(drawable,200), HotspotPlace.CENTER,false);
+        }
+
+        //prepare bitmaps
+        for (int i=0; i<100; i++){
+            mScaleSymbols[i]=new MarkerSymbol( AndroidGraphicsCustom.drawableToBitmap(icon,101+i),HotspotPlace.CENTER,false);
         }
 
         //TextureItem t=new TextureItem(bitmapPoi);
@@ -218,6 +229,14 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
 
     AnimatedVectorDrawableCompat advCompat;
     AnimatedVectorDrawable adv;
+
+    public void prepareClickFrames(double scale){
+        for(int i=0;i<=18;i++){
+            String name=(i<10)?"frame0":"frame";
+            Drawable drawable=getResources().getDrawable(this.getResources().getIdentifier(name+i, "drawable", this.getPackageName()));
+            //mClickAnimationSymbols[i]=addCircleOnClick(drawable);
+        }
+    }
 
 
 
@@ -464,6 +483,10 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
                 double scale = mapPosition.getZoom();
                 Log.d("scale_test", "scale:" + scale);
                 mScale=mapPosition.getScale();
+                int scaleDiff=(int) (100*(scale-16));
+                if (scale>16 && scale<17){
+                    scaleIcon(scaleDiff);
+                }
 
             }
             if (e==Map.TILT_EVENT){
@@ -471,6 +494,13 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
             }
         }
 
+    }
+    public void scaleIcon(int scale){
+        taxiMarker = mMarkerLayer.getItemList().get(0);
+        taxiMarker.setMarker(mScaleSymbols[scale]);
+        taxiMarker.setRotation(mCompass.getRotation());
+        mMarkerLayer.getItemList().set(0,taxiMarker);
+        mapView.map().updateMap(false);
     }
 
     public void rescheduleTimer(){
@@ -516,11 +546,11 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         }
     }
 
-private MarkerSymbol addCircleOnClick(Drawable drawable){
-    Bitmap circle = drawableToBitmap(drawable);
-    MarkerSymbol circleSym= new MarkerSymbol(circle, HotspotPlace.CENTER,false);
-    return  circleSym;
-}
+//private MarkerSymbol addCircleOnClick(Drawable drawable){
+//    Bitmap circle = drawableToBitmap(drawable);
+//    MarkerSymbol circleSym= new MarkerSymbol(circle, HotspotPlace.CENTER,false);
+//    return  circleSym;
+//}
 
     @Override
     public boolean onItemSingleTapUp(int index, TaxiMarker item) {
