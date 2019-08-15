@@ -13,11 +13,13 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
-import android.location.LocationListener;
+//import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.graphics.drawable.AnimatedVectorDrawableCompat;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
@@ -39,6 +41,7 @@ import org.oscim.tiling.source.mapfile.MapFileTileSource;
 import java.io.File;
 
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -59,7 +62,16 @@ import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
-
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 //import com.example.android.testradar.mapfile.MapFileTileSource;
 
@@ -68,7 +80,8 @@ import java.util.TimerTask;
  * <p>
  * You'll need a map with filename berlin.map from download.mapsforge.org in device storage.
  */
-public class GettingStartedMarker extends Activity implements LocationListener, ItemizedLayer.OnItemGestureListener<TaxiMarker>, SensorEventListener,  GestureListener {
+public class GettingStartedMarkerFused extends Activity implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener, ItemizedLayer.OnItemGestureListener<TaxiMarker>, SensorEventListener, GestureListener {
     // Name of the map file in device storage
     private static final String MAP_FILE = "nicaragua.map";
     //private static final String MAP_FILE = "janofa.map";
@@ -77,7 +90,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     private MapScaleBar mapScaleBar;
     private Context mContext;
     private Location mLocation;
-    private  Compass mCompass;
+    private Compass mCompass;
     private ImageView compassImage;
     private ImageView backToCenterImage;
 
@@ -85,7 +98,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     private float mTilt;
     private double mScale;
 
-    private  float mRotation;
+    private float mRotation;
     MarkerSymbol symbol;
     private SensorManager mSensorManager;
     private Sensor mSensorAccelerometer;
@@ -94,23 +107,35 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     MarkerSymbol mFocusMarker;
     ItemizedLayer<TaxiMarker> mMarkerLayer;
 
-//    private LocationLayer andresLocationLayer;
+    //    private LocationLayer andresLocationLayer;
 //    private LocationLayer locationLayer;
     private LocationManager locationManager;
     private final MapPosition mapPosition = new MapPosition();
-    MarkerSymbol[] mClickAnimationSymbols =new MarkerSymbol[19];
-    Drawable[] mClickAnimationDrawables=new Drawable[19];
-    private MarkerSymbol[] mScaleSymbols=new MarkerSymbol[100];
+    MarkerSymbol[] mClickAnimationSymbols = new MarkerSymbol[19];
+    Drawable[] mClickAnimationDrawables = new Drawable[19];
+    private MarkerSymbol[] mScaleSymbols = new MarkerSymbol[100];
 
     DataConnect dataConnect;
+
+
+    //experiment
+    private FusedLocationProviderClient fusedLocationProviderClient;
+    private LocationRequest locationRequest;
+    private LocationCallback locationCallback;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // we build google api client
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(3000);
+        locationRequest.setFastestInterval(500);
 
 
-
-        mContext= getApplicationContext();
+        mContext = getApplicationContext();
 
         mSensorManager = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
 
@@ -121,11 +146,11 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
 
         setContentView(R.layout.activity_tilemap);
         // Map view
-        mapView= (MapView) findViewById(R.id.mapView);
+        mapView = (MapView) findViewById(R.id.mapView);
 
-        compassImage=(ImageView) findViewById(R.id.compass);
-        backToCenterImage=(ImageView) findViewById(R.id.back_to_center);
-        mCompass=new Compass(this,mapView.map(),compassImage);
+        compassImage = (ImageView) findViewById(R.id.compass);
+        backToCenterImage = (ImageView) findViewById(R.id.back_to_center);
+        mCompass = new Compass(this, mapView.map(), compassImage);
 
 
         // Tile source
@@ -159,14 +184,46 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
             mapScaleBarLayer.getRenderer().setOffset(5 * CanvasAdapter.getScale(), 0);
             mapView.map().layers().add(mapScaleBarLayer);
 
-            mTilt=mapView.map().viewport().getMinTilt();
-            mScale=1<<17;
+            mTilt = mapView.map().viewport().getMinTilt();
+            mScale = 1 << 17;
 
-            if (ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED) {
-                mLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                mapView.map().setMapPosition(mLocation.getLatitude(),mLocation.getLongitude(),mScale);
+//            if (ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED) {
+//                mLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+//                mapView.map().setMapPosition(mLocation.getLatitude(),mLocation.getLongitude(),mScale);
+//
+//            }
 
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                fusedLocationProviderClient.getLastLocation()
+                        .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                            @Override
+                            public void onSuccess(Location location) {
+                                // Got last known location. In some rare situations this can be null.
+                                if (location != null) {
+                                    mLocation = location;
+                                    mapView.map().setMapPosition(mLocation.getLatitude(), mLocation.getLongitude(), mScale);
+                                }
+                            }
+                        });
             }
+
+            locationCallback = new LocationCallback() {
+                @Override
+                public void onLocationResult(LocationResult locationResult) {
+                    if (locationResult == null) {
+                        return;
+                    }
+
+                    endLocation = locationResult.getLastLocation();
+                    mCompass.setCurrLocation(endLocation);
+                    if (mCurrLocation != null && mLocation != null && !mClicked) {
+                        smoothenMapMovement(mCurrLocation, mLocation, endLocation);
+                        mLocation = endLocation;
+                    }
+                }
+
+                ;
+            };
 
 
         }
@@ -176,25 +233,25 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         mapView.map().layers().add(mCompass);
 
         mapView.map().layers().add(new MapEventsReceiver(mapView));
-        Drawable icon=getResources().getDrawable(R.drawable.frame00);
-        Bitmap bitmapPoi = AndroidGraphicsCustom.drawableToBitmap(icon,200);
+        Drawable icon = getResources().getDrawable(R.drawable.frame00);
+        Bitmap bitmapPoi = AndroidGraphicsCustom.drawableToBitmap(icon, 200);
 
-        for(int i=0;i<=18;i++){
-            String name=(i<10)?"frame0":"frame";
-            Drawable drawable=getResources().getDrawable(this.getResources().getIdentifier(name+i, "drawable", this.getPackageName()));
-            mClickAnimationDrawables[i]=drawable;
-            mClickAnimationSymbols[i]=new MarkerSymbol(AndroidGraphicsCustom.drawableToBitmap(drawable,200), HotspotPlace.CENTER,false);
+        for (int i = 0; i <= 18; i++) {
+            String name = (i < 10) ? "frame0" : "frame";
+            Drawable drawable = getResources().getDrawable(this.getResources().getIdentifier(name + i, "drawable", this.getPackageName()));
+            mClickAnimationDrawables[i] = drawable;
+            mClickAnimationSymbols[i] = new MarkerSymbol(AndroidGraphicsCustom.drawableToBitmap(drawable, 200), HotspotPlace.CENTER, false);
         }
 
         //prepare bitmaps
-        for (int i=0; i<100; i++){
-            mScaleSymbols[i]=new MarkerSymbol( AndroidGraphicsCustom.drawableToBitmap(icon,101+i),HotspotPlace.CENTER,false);
+        for (int i = 0; i < 100; i++) {
+            mScaleSymbols[i] = new MarkerSymbol(AndroidGraphicsCustom.drawableToBitmap(icon, 101 + i), HotspotPlace.CENTER, false);
         }
 
         //TextureItem t=new TextureItem(bitmapPoi);
         //TextureRegion tr=new TextureRegion(t,new TextureAtlas.Rect(0,0,10,10));
 
-        symbol = new MarkerSymbol(bitmapPoi, HotspotPlace.CENTER,false);
+        symbol = new MarkerSymbol(bitmapPoi, HotspotPlace.CENTER, false);
 
         mMarkerLayer = new ItemizedLayer<>(mapView.map(), new ArrayList<TaxiMarker>(), symbol, this);
         mapView.map().layers().add(mMarkerLayer);
@@ -202,11 +259,11 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         //mMarkerLayer.addItem(new TaxiMarker(1,"theos id", "", new GeoPoint(mLocation.getLatitude(), mLocation.getLongitude()),1,"uno"));
 
         //response from callback
-        dataConnect= new DataConnect(mContext);
+        dataConnect = new DataConnect(mContext);
         dataConnect.setOnTaxiDataListener(new DataConnect.OnTaxiDataListener() {
             @Override
             public void onTaxiDataArrived(TaxiMarker[] taxiArray) {
-                Toast.makeText(mContext, "your data just arrived"+taxiArray.length+", "+taxiArray[0].getTaxiId(),Toast.LENGTH_LONG).show();
+                Toast.makeText(mContext, "your data just arrived" + taxiArray.length + ", " + taxiArray[0].getTaxiId(), Toast.LENGTH_LONG).show();
             }
         });
 
@@ -219,13 +276,12 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         backToCenterImage.setVisibility(ImageView.INVISIBLE);
 
         Drawable d = backToCenterImage.getDrawable();
-        if (d instanceof AnimatedVectorDrawableCompat){
+        if (d instanceof AnimatedVectorDrawableCompat) {
             advCompat = (AnimatedVectorDrawableCompat) d;
-        } else if (d instanceof AnimatedVectorDrawable){
+        } else if (d instanceof AnimatedVectorDrawable) {
             adv = (AnimatedVectorDrawable) d;
 
         }
-
 
 
     }
@@ -233,23 +289,19 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     AnimatedVectorDrawableCompat advCompat;
     AnimatedVectorDrawable adv;
 
-    public void prepareClickFrames(double scale){
-        for(int i=0;i<=18;i++){
-            String name=(i<10)?"frame0":"frame";
-            Drawable drawable=getResources().getDrawable(this.getResources().getIdentifier(name+i, "drawable", this.getPackageName()));
+    public void prepareClickFrames(double scale) {
+        for (int i = 0; i <= 18; i++) {
+            String name = (i < 10) ? "frame0" : "frame";
+            Drawable drawable = getResources().getDrawable(this.getResources().getIdentifier(name + i, "drawable", this.getPackageName()));
             //mClickAnimationSymbols[i]=addCircleOnClick(drawable);
         }
     }
 
 
-
-
-
-
-
     @Override
     protected void onStart() {
         super.onStart();
+
 
         // Listeners for the sensors are registered in this callback and
         // can be unregistered in onStop().
@@ -279,19 +331,19 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     TaxiMarker taxiMarker;
 
     void createLayers(ItemizedLayer<TaxiMarker> itemizedLayer, Location location, float rotation) {
-        if (itemizedLayer.getItemList().size()>0) {
+        if (itemizedLayer.getItemList().size() > 0) {
             taxiMarker = itemizedLayer.getItemList().get(0);
-            Log.d("testR","right place");
-        }else{
-            taxiMarker=new TaxiMarker(1,"theos id", "", new GeoPoint(location.getLatitude(), location.getLongitude()),1,"uno");
-            Log.d("testR","wrong place");
+            Log.d("testR", "right place");
+        } else {
+            taxiMarker = new TaxiMarker(1, "theos id", "", new GeoPoint(location.getLatitude(), location.getLongitude()), 1, "uno");
+            Log.d("testR", "wrong place");
         }
-        taxiMarker.geoPoint=new GeoPoint(location.getLatitude(),location.getLongitude());
+        taxiMarker.geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
         taxiMarker.setMarker(symbol);
         taxiMarker.setRotation(rotation);
-        if (itemizedLayer.getItemList().size()>0) {
+        if (itemizedLayer.getItemList().size() > 0) {
             itemizedLayer.getItemList().set(0, taxiMarker);
-        }else {
+        } else {
             itemizedLayer.addItem(taxiMarker);
         }
         itemizedLayer.populate();//???
@@ -309,12 +361,23 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
         //mapView.map().updateMap(false);
     }
 
-//test  fhfg gn
+    //test  fhfg gn
     @Override
     protected void onResume() {
         super.onResume();
         mapView.onResume();
-        enableAvailableProviders();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, null);
+//        enableAvailableProviders();
 
     }
 
@@ -323,7 +386,10 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
     protected void onPause() {
         mapView.onPause();
         super.onPause();
-        locationManager.removeUpdates(this);
+//        locationManager.removeUpdates(this);
+        fusedLocationProviderClient.removeLocationUpdates(locationCallback);
+
+
     }
 
     @Override
@@ -336,46 +402,46 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
 
     boolean mClicked=false;
     private Location mCurrLocation=new Location("");
-    @Override
-    public void onLocationChanged(Location location) {
-        endLocation=location;
-        if (mCurrLocation!=null && mLocation!=null && !mClicked) {
-            smoothenMapMovement(mCurrLocation, mLocation, location);
-            mLocation = location;
-        }
+//    @Override
+//    public void onLocationChanged(Location location) {
+//        endLocation=location;
+//        if (mCurrLocation!=null && mLocation!=null && !mClicked) {
+//            smoothenMapMovement(mCurrLocation, mLocation, location);
+//            mLocation = location;
+//        }
+//
+//
+//        //mapView.map().viewport().setMapPosition(new MapPosition(location.getLatitude(),location.getLongitude(),1<<17));
+//        //dataConnect.getTaxiData();
+//    }
+//
+//    @Override
+//    public void onStatusChanged(String s, int i, Bundle bundle) {
+//
+//    }
+//
+//    @Override
+//    public void onProviderEnabled(String s) {
+//
+//    }
+//
+//    @Override
+//    public void onProviderDisabled(String s) {
+//
+//    }
+//
+//    private void enableAvailableProviders() {
+//        locationManager.removeUpdates(this);
+//
+//        for (String provider : locationManager.getProviders(true)) {
+//            if (LocationManager.GPS_PROVIDER.equals(provider)) {
+//                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)== PackageManager.PERMISSION_GRANTED)
+//                    locationManager.requestLocationUpdates(provider, 300, 0, this);
+//            }
+//        }
+//    }
 
-
-        //mapView.map().viewport().setMapPosition(new MapPosition(location.getLatitude(),location.getLongitude(),1<<17));
-        //dataConnect.getTaxiData();
-    }
-
-    @Override
-    public void onStatusChanged(String s, int i, Bundle bundle) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String s) {
-
-    }
-
-    @Override
-    public void onProviderDisabled(String s) {
-
-    }
-
-    private void enableAvailableProviders() {
-        locationManager.removeUpdates(this);
-
-        for (String provider : locationManager.getProviders(true)) {
-            if (LocationManager.GPS_PROVIDER.equals(provider)) {
-                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)== PackageManager.PERMISSION_GRANTED)
-                locationManager.requestLocationUpdates(provider, 300, 0, this);
-            }
-        }
-    }
-
-//    private float[] mAccelerometerData = new float[3];
+    //    private float[] mAccelerometerData = new float[3];
 //    private float[] mMagnetometerData = new float[3];
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
@@ -437,6 +503,21 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
 
     int mCurrSize;
 
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
     class MapEventsReceiver extends Layer implements GestureListener, Map.UpdateListener {
 
         MapEventsReceiver(MapView mapView) {
@@ -472,7 +553,7 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
                 //Toast.makeText(mContext,"currPos: "+mapPosition.getLatitude(),Toast.LENGTH_LONG).show();
                 mCurrLocation.setLatitude(mapView.map().getMapPosition().getLatitude());
                 mCurrLocation.setLongitude(mapView.map().getMapPosition().getLongitude());
-               // Toast.makeText(mContext,"currPos: "+mapPosition.getLatitude()+" "+mCurrLocation.getLatitude(),Toast.LENGTH_LONG).show();
+                // Toast.makeText(mContext,"currPos: "+mapPosition.getLatitude()+" "+mCurrLocation.getLatitude(),Toast.LENGTH_LONG).show();
 
             }
             if (e==Map.MOVE_EVENT){
@@ -700,3 +781,4 @@ public class GettingStartedMarker extends Activity implements LocationListener, 
 
 
 }
+

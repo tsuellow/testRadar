@@ -17,10 +17,13 @@
 package com.example.android.testradar;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.util.Log;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
 import android.widget.ImageView;
@@ -54,6 +57,7 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
     // private boolean mLastAccelerometerSet;
     // private boolean mLastMagnetometerSet;
     private Context mContext;
+    private Location mCurrLocation;
 
     private float mCurRotation;
     private float mCurTilt;
@@ -71,6 +75,10 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
             adjustArrow(rotation, rotation);
         }
 
+    }
+
+    public void setCurrLocation(Location location){
+        mCurrLocation=location;
     }
 
 
@@ -210,6 +218,16 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
         System.arraycopy(event.values, 0, mRotationV, 0, event.values.length);
 
         float rotation = mRotationV[0];
+
+        if (mCurrLocation!=null){
+            if (mCurrLocation.getSpeed()>2.7 && (mCurrLocation.getBearing()-rotation)<30){
+                rotation=mCurrLocation.getBearing();
+                Log.d("speedBearing","speed:"+mCurrLocation.getSpeed()+" bearing:"+mCurrLocation.getBearing()+" , "+rotation);
+                mArrowView.setColorFilter(Color.RED);
+            }else{
+                mArrowView.setColorFilter(Color.BLACK);
+            }
+        }
 
         float change = rotation - mCurRotation;
         change = (float) FastMath.clampDegree(change);

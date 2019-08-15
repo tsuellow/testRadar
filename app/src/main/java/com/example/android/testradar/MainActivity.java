@@ -65,6 +65,7 @@ public class MainActivity extends Activity {
         LinearLayout linearLayout = findViewById(R.id.samples);
         linearLayout.addView(createButton(GettingStarted.class));
         linearLayout.addView(createButton(GettingStartedMarker.class));
+        linearLayout.addView(createButton(GettingStartedMarkerFused.class));
         linearLayout.addView(createButton(GettingStartedVector.class));
         linearLayout.addView(createLabel(null));
 
