@@ -24,6 +24,8 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
 import android.util.Log;
+import android.view.Surface;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
 import android.widget.ImageView;
@@ -60,6 +62,7 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
     private Location mCurrLocation;
 
     private float mCurRotation;
+    private float mCurMapRotation;
     private float mCurTilt;
 
 
@@ -72,7 +75,8 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
     public void onMapEvent(Event e, MapPosition mapPosition) {
         if (!mControlOrientation) {
             float rotation = -mapPosition.bearing;
-            adjustArrow(rotation, rotation);
+            adjustArrow(mCurMapRotation, rotation);
+            mCurMapRotation=rotation;
         }
 
     }
@@ -108,6 +112,12 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
     @Override
     public synchronized float getRotation() {
         return mCurRotation;
+    }
+
+    public synchronized float getMapRotation(){return mCurMapRotation;}
+
+    public void setMapRotation(float rotation){
+        mCurMapRotation=rotation;
     }
 
     public void controlView(boolean enable) {
@@ -206,6 +216,7 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
         an.setDuration(100);
         an.setRepeatCount(0);
         an.setFillAfter(true);
+        Log.d("compas", "prev:"+prev+"cur:"+cur);
 
         mArrowView.startAnimation(an);
     }
@@ -218,6 +229,9 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
         System.arraycopy(event.values, 0, mRotationV, 0, event.values.length);
 
         float rotation = mRotationV[0];
+        float rotationMap = mRotationV[0];
+
+        rotation=adjustScreenRotation(rotation);
 
         if (mCurrLocation!=null){
             if (mCurrLocation.getSpeed()>2.7 && (mCurrLocation.getBearing()-rotation)<30){
@@ -231,12 +245,16 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
 
         float change = rotation - mCurRotation;
         change = (float) FastMath.clampDegree(change);
-
+        float changeMap = rotation - mCurMapRotation;
+        changeMap = (float) FastMath.clampDegree(changeMap);
         // low-pass
         change *= 0.05;
+        changeMap *= 0.05;
 
         rotation = mCurRotation + change;
         rotation = (float) FastMath.clampDegree(rotation);
+        rotationMap = mCurMapRotation + changeMap;
+        rotationMap = (float) FastMath.clampDegree(rotationMap);
 
 //        float tilt = mRotationV[1];
 //
@@ -245,21 +263,36 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
         if (mMode != Mode.OFF) {
             boolean redraw = false;
 
-            if (Math.abs(change) > 0.01) {
-                adjustArrow(mCurRotation, rotation);
+            if (Math.abs(changeMap) > 0.01) {
+                adjustArrow(mCurMapRotation, rotationMap);
 
-                mMap.viewport().setRotation(-rotation);
-                mMap.viewport().setMapViewCenter(0.75f);
+                mMap.viewport().setRotation(-rotationMap);
+                //mMap.viewport().setMapViewCenter(0.75f);
                 redraw = true;
             }
 
 //            if (mMode == Mode.C3D)
 //                redraw |= mMap.viewport().setTilt(-mCurTilt * 1.5f);
 
-            if (redraw)
-                mMap.updateMap(true);
+            if (redraw){
+                mMap.updateMap(true);}
+            mCurMapRotation=rotationMap;
         }
         mCurRotation = rotation;
+    }
+
+    public float adjustScreenRotation(float rotation){
+        final int screenRotation = ((WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getRotation();
+        switch (screenRotation) {
+            case Surface.ROTATION_0:
+                return rotation;
+            case Surface.ROTATION_90:
+                return rotation+90;
+            case Surface.ROTATION_180:
+                return rotation+180;
+            default:
+                return rotation+270;
+        }
     }
 
     // from http://stackoverflow.com/questions/16317599/android-compass-that-

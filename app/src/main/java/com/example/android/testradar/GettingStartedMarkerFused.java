@@ -174,7 +174,8 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
 
             // Render theme
             mapView.map().setTheme(VtmThemes.DEFAULT);
-            //add markers
+            //add set pivot
+            mapView.map().viewport().setMapViewCenter(0.75f);
 
 
             // Scale bar
@@ -549,20 +550,25 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
 
         @Override
         public void onMapEvent(Event e, MapPosition mapPosition) {
-            if (e == Map.POSITION_EVENT) {
-                //Toast.makeText(mContext,"currPos: "+mapPosition.getLatitude(),Toast.LENGTH_LONG).show();
-                mCurrLocation.setLatitude(mapView.map().getMapPosition().getLatitude());
-                mCurrLocation.setLongitude(mapView.map().getMapPosition().getLongitude());
-                // Toast.makeText(mContext,"currPos: "+mapPosition.getLatitude()+" "+mCurrLocation.getLatitude(),Toast.LENGTH_LONG).show();
+            if (e == Map.POSITION_EVENT || e == Map.SCALE_EVENT || e == Map.ANIM_END|| e==Map.ROTATE_EVENT) {
+
+                    //Toast.makeText(mContext,"currPos: "+mapPosition.getLatitude(),Toast.LENGTH_LONG).show();
+                    mCurrLocation.setLatitude(mapView.map().getMapPosition().getLatitude());
+                    mCurrLocation.setLongitude(mapView.map().getMapPosition().getLongitude());
+                    // Toast.makeText(mContext,"currPos: "+mapPosition.getLatitude()+" "+mCurrLocation.getLatitude(),Toast.LENGTH_LONG).show();
+
+
 
             }
-            if (e==Map.MOVE_EVENT){
+            if (e==Map.MOVE_EVENT || e == Map.SCALE_EVENT || e==Map.ROTATE_EVENT){
                 backToCenterImage.setVisibility(ImageView.VISIBLE);
                 bullseyeAnim();
+                //mCompass.setMode(Compass.Mode.OFF);
                 wasMoved=true;
+                mCompass.controlView(false);
                 rescheduleTimer();
             }
-            if(e == Map.SCALE_EVENT || e == Map.ANIM_END) {
+            if(e == Map.SCALE_EVENT || e == Map.ANIM_END|| e==Map.ROTATE_EVENT) {
                 double scale = mapPosition.getZoom();
                 Log.d("scale_test", "scale:" + scale);
                 mScale=mapPosition.getScale();
@@ -614,6 +620,7 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
         mTimer.cancel();
         mTimer=new Timer("movementTimer",true);
         MyTimerClass timerTask=new MyTimerClass();
+        mCompass.setMode(Compass.Mode.OFF);
         mTimer.schedule(timerTask,15000);
     }
 
@@ -625,6 +632,8 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
                 @Override
                 public void run() {
                     backToCenter();
+                    //mCompass.setEnabled(true);
+
                 }
             });
 
@@ -633,8 +642,10 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
 
     private void backToCenter(){
         wasMoved=false;
+        mCompass.setMapRotation(-mapView.map().getMapPosition().getBearing());
         smoothenMapMovement(mCurrLocation,mLocation,endLocation);
         backToCenterImage.setVisibility(ImageView.INVISIBLE);
+        //mCompass.setMode(Compass.Mode.C2D);
         mTimer.cancel();
     }
 
@@ -702,13 +713,16 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
     private void smoothenMapMovement(Location initialMap, Location initialTaxi, final Location end){
         double latDiffMap=end.getLatitude()-initialMap.getLatitude();
         double lonDiffMap=end.getLongitude()-initialMap.getLongitude();
+        //float rotDiffMap=-mCompass.getRotation()-mapView.map().getMapPosition().getBearing();
+        //mCompass.setMapRotation(mapView.map().getMapPosition().getBearing());
 
         double latDiff=end.getLatitude()-initialTaxi.getLatitude();
         double lonDiff=end.getLongitude()-initialTaxi.getLongitude();
-        int frames=19;
+        final int frames=19;
         for (int a = 0; a<frames ;a++) {
             final double latMap = initialMap.getLatitude() + latDiffMap * (a + 1) / frames;
             final double lonMap = initialMap.getLongitude() + lonDiffMap * (a + 1) / frames;
+            final int i=a;
 
             final double lat = initialTaxi.getLatitude() + latDiff * (a + 1) / frames;
             final double lon = initialTaxi.getLongitude() + lonDiff * (a + 1) / frames;
@@ -725,10 +739,14 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
                             //move map
                             mapView.map().viewport().setMapPosition(new MapPosition(latMap, lonMap, mScale));
                             mapView.map().viewport().setTilt(mTilt);
-                            mapView.map().viewport().setRotation(-mCompass.getRotation());
+                            mapView.map().viewport().setRotation(-mCompass.getMapRotation());
                             //reset anim initial values
                             mCurrLocation.setLatitude(latMap);
                             mCurrLocation.setLongitude(lonMap);
+                            if(i==frames-1){
+                                mCompass.controlView(true);
+                                mCompass.setMode(Compass.Mode.C2D);
+                            }
                         }
 
                         //move taxi
