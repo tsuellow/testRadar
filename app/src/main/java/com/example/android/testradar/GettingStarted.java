@@ -42,7 +42,7 @@ import java.util.Date;
  */
 public class GettingStarted extends Activity implements LocationListener {
     // Name of the map file in device storage
-    private static final String MAP_FILE = "nica.map";
+    private static final String MAP_FILE = "janofa.map";
 
     private MapView mapView;
     private MapScaleBar mapScaleBar;

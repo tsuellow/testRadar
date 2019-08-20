@@ -2,12 +2,11 @@ package com.example.android.testradar;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.graphics.Canvas;
 import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.ScaleDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -15,9 +14,12 @@ import android.hardware.SensorManager;
 import android.location.Location;
 //import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.graphics.drawable.AnimatedVectorDrawableCompat;
@@ -42,6 +44,7 @@ import java.io.File;
 
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -58,16 +61,14 @@ import org.oscim.layers.marker.MarkerSymbol.HotspotPlace;
 //import org.oscim.tiling.source.OkHttpEngine;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import com.bumptech.glide.Glide;
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
@@ -93,6 +94,9 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
     private Compass mCompass;
     private ImageView compassImage;
     private ImageView backToCenterImage;
+
+    private AlertDialog dialogCalibrate;
+    Vibrator mVibrator;
 
 
     private float mTilt;
@@ -133,7 +137,7 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         locationRequest.setInterval(3000);
         locationRequest.setFastestInterval(500);
-
+        mVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
         mContext = getApplicationContext();
 
@@ -284,7 +288,7 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
 
         }
 
-
+        prepareCompassRecalibrateDialog();
     }
 
     AnimatedVectorDrawableCompat advCompat;
@@ -496,8 +500,36 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
 
     }
 
+    boolean magAccurate=true;
+    boolean accAccurate=true;
+
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {
+
+        if (sensor.getType()== Sensor.TYPE_MAGNETIC_FIELD ) {
+            magAccurate= i>=3;
+        }else if (sensor.getType()== Sensor.TYPE_ACCELEROMETER ){
+            accAccurate= i>=2;
+        }
+        if (!magAccurate || !accAccurate){
+            if (!dialogCalibrate.isShowing()){
+                dialogCalibrate.show();
+            }
+        }
+        if (magAccurate && accAccurate){
+            if (dialogCalibrate.isShowing()){
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    mVibrator.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    //deprecated in API 26
+                    mVibrator.vibrate(1000);
+                }
+                dialogCalibrate.cancel();
+            }
+        }
+
+
+
 
     }
 
@@ -793,6 +825,30 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
     @Override
     public boolean onGesture(Gesture g, MotionEvent e) {
         return false;
+    }
+
+
+    private void prepareCompassRecalibrateDialog() {
+        AlertDialog.Builder mBuilder=new AlertDialog.Builder(this);
+        View mView=getLayoutInflater().inflate(R.layout.dialog_recalibrate_compass,null);
+
+        ImageView gifView=(ImageView) mView.findViewById(R.id.iv_calibration_gif);
+        Glide.with(this).asGif().load(R.raw.compass_calibration).into(gifView);
+
+        Button mOk=(Button) mView.findViewById(R.id.btn_ok_pin);
+        Button mCancel=(Button) mView.findViewById(R.id.btn_cancel_pin);
+        mBuilder.setTitle("Please recalibrate your compass");
+        mBuilder.setMessage("perform the following gesture until your phone vibrates");
+        mBuilder.setView(mView);
+        dialogCalibrate=mBuilder.create();
+        mCancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialogCalibrate.dismiss();
+            }
+        });
+
+
     }
 
 

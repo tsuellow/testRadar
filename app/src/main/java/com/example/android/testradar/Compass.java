@@ -229,12 +229,12 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
         System.arraycopy(event.values, 0, mRotationV, 0, event.values.length);
 
         float rotation = mRotationV[0];
-        float rotationMap = mRotationV[0];
+        float rotationMap;
 
         rotation=adjustScreenRotation(rotation);
 
         if (mCurrLocation!=null){
-            if (mCurrLocation.getSpeed()>2.7 && (mCurrLocation.getBearing()-rotation)<30){
+            if (mCurrLocation.getSpeed()>2.7 && (mCurrLocation.getBearing()-rotation)<45){
                 rotation=mCurrLocation.getBearing();
                 Log.d("speedBearing","speed:"+mCurrLocation.getSpeed()+" bearing:"+mCurrLocation.getBearing()+" , "+rotation);
                 mArrowView.setColorFilter(Color.RED);
