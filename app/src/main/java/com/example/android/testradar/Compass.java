@@ -51,19 +51,16 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
     private final SensorManager mSensorManager;
     private final ImageView mArrowView;
 
-    // private final float[] mRotationM = new float[9];
+
     private final float[] mRotationV = new float[3];
 
-    // private float[] mAccelV = new float[3];
-    // private float[] mMagnetV = new float[3];
-    // private boolean mLastAccelerometerSet;
-    // private boolean mLastMagnetometerSet;
+    private float mCorrectionFactor;
     private Context mContext;
     private Location mCurrLocation;
 
     private float mCurRotation;
     private float mCurMapRotation;
-    private float mCurTilt;
+    private float mCurSensorRotation;
 
 
     private boolean mControlOrientation;
@@ -83,6 +80,7 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
 
     public void setCurrLocation(Location location){
         mCurrLocation=location;
+        mCorrectionFactor=location.getSpeed()>2.7 ? location.getBearing()-mCurSensorRotation:mCorrectionFactor;
     }
 
 
@@ -178,23 +176,10 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
         super.setEnabled(true);
 
         Sensor sensor;
-        // Sensor sensor =
-        // mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        // Sensor sensor =
-        // mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        // sensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        // mSensorManager.registerListener(this, sensor,
-        // SensorManager.SENSOR_DELAY_UI);
-        // sensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        // mSensorManager.registerListener(this, sensor,
-        // SensorManager.SENSOR_DELAY_UI);
 
         sensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
         mSensorManager.registerListener(this, sensor,
                 SensorManager.SENSOR_DELAY_UI);
-
-        // mLastAccelerometerSet = false;
-        // mLastMagnetometerSet = false;
     }
 
     public void pause() {
@@ -232,13 +217,15 @@ public class Compass extends Layer implements SensorEventListener, Map.UpdateLis
         float rotationMap;
 
         rotation=adjustScreenRotation(rotation);
+        mCurSensorRotation=rotation;
 
         if (mCurrLocation!=null){
-            if (mCurrLocation.getSpeed()>2.7 && (mCurrLocation.getBearing()-rotation)<45){
+            if (mCurrLocation.getSpeed()>=2.7 && (mCurrLocation.getBearing()-rotation)<45){
                 rotation=mCurrLocation.getBearing();
                 Log.d("speedBearing","speed:"+mCurrLocation.getSpeed()+" bearing:"+mCurrLocation.getBearing()+" , "+rotation);
                 mArrowView.setColorFilter(Color.RED);
             }else{
+                rotation=rotation+mCorrectionFactor;
                 mArrowView.setColorFilter(Color.BLACK);
             }
         }

@@ -12,7 +12,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
-//import android.location.LocationListener;
+
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -26,19 +26,31 @@ import android.support.graphics.drawable.AnimatedVectorDrawableCompat;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
+
+import org.geojson.FeatureCollection;
+
 import org.oscim.android.MapView;
 import org.oscim.backend.CanvasAdapter;
+import org.oscim.backend.canvas.Color;
 import org.oscim.core.MapPosition;
 import org.oscim.event.Event;
+
 import org.oscim.layers.tile.buildings.BuildingLayer;
 import org.oscim.layers.tile.vector.VectorTileLayer;
+
+import org.oscim.layers.tile.vector.labeling.LabelLayer;
 import org.oscim.map.Map;
 import org.oscim.renderer.GLViewport;
 import org.oscim.scalebar.DefaultMapScaleBar;
 import org.oscim.scalebar.MapScaleBar;
 import org.oscim.scalebar.MapScaleBarLayer;
+
 import org.oscim.theme.VtmThemes;
+import org.oscim.tiling.TileSource;
 import org.oscim.tiling.source.mapfile.MapFileTileSource;
+
+
+
 
 import java.io.File;
 
@@ -58,13 +70,19 @@ import org.oscim.layers.marker.ItemizedLayer;
 
 import org.oscim.layers.marker.MarkerSymbol;
 import org.oscim.layers.marker.MarkerSymbol.HotspotPlace;
-//import org.oscim.tiling.source.OkHttpEngine;
 
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+
+import java.util.List;
+
 import java.util.Timer;
 import java.util.TimerTask;
 
 import com.bumptech.glide.Glide;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -73,6 +91,10 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
+
+import org.oscim.layers.vector.VectorLayer;
+import org.oscim.utils.ColorUtil;
+
 
 //import com.example.android.testradar.mapfile.MapFileTileSource;
 
@@ -85,9 +107,11 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
         GoogleApiClient.OnConnectionFailedListener, ItemizedLayer.OnItemGestureListener<TaxiMarker>, SensorEventListener, GestureListener {
     // Name of the map file in device storage
     private static final String MAP_FILE = "nicaragua.map";
-    //private static final String MAP_FILE = "janofa.map";
+
 
     private MapView mapView;
+    private MapView fakeMapView;
+
     private MapScaleBar mapScaleBar;
     private Context mContext;
     private Location mLocation;
@@ -102,7 +126,6 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
     private float mTilt;
     private double mScale;
 
-    private float mRotation;
     MarkerSymbol symbol;
     private SensorManager mSensorManager;
     private Sensor mSensorAccelerometer;
@@ -111,9 +134,6 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
     MarkerSymbol mFocusMarker;
     ItemizedLayer<TaxiMarker> mMarkerLayer;
 
-    //    private LocationLayer andresLocationLayer;
-//    private LocationLayer locationLayer;
-    private LocationManager locationManager;
     private final MapPosition mapPosition = new MapPosition();
     MarkerSymbol[] mClickAnimationSymbols = new MarkerSymbol[19];
     Drawable[] mClickAnimationDrawables = new Drawable[19];
@@ -127,10 +147,27 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
     private LocationRequest locationRequest;
     private LocationCallback locationCallback;
 
+    private InputStream geoJsonIs;
+    protected GeoPoint latLong3 = new GeoPoint(13.093450198147186,-86.35986685752869);
+    protected GeoPoint latLong4 = new GeoPoint(-86.36019945144653,13.093345699061093);
+    protected GeoPoint latLong5 = new GeoPoint(13.092018556811505,-86.0);
+    protected GeoPoint latLong6 = new GeoPoint(13.091182558023565,-86.36449098587036);
+    protected GeoPoint latLong7 = new GeoPoint(13.0,-86.36331081390381);
+    protected GeoPoint latLong8 = new GeoPoint(13.09161100775676,-86.36157274246214);
+    protected GeoPoint latLong9 = new GeoPoint(13.092478354935732,-86.36052131652832);
+
+    BarriosLayer mVectorLayer;
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+
+
+
+
         // we build google api client
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         locationRequest = LocationRequest.create();
@@ -152,6 +189,8 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
         // Map view
         mapView = (MapView) findViewById(R.id.mapView);
 
+
+
         compassImage = (ImageView) findViewById(R.id.compass);
         backToCenterImage = (ImageView) findViewById(R.id.back_to_center);
         mCompass = new Compass(this, mapView.map(), compassImage);
@@ -162,13 +201,19 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
 
         String mapPath = new File(Environment.getExternalStorageDirectory(), MAP_FILE).getAbsolutePath();
 
+
         tileSource.setMapFile(mapPath);
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        //    private LocationLayer andresLocationLayer;
+        //    private LocationLayer locationLayer;
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         if (tileSource.setMapFile(mapPath)) {
 
             // Vector layer
             VectorTileLayer tileLayer = mapView.map().setBaseMap(tileSource);
+
+
 
             // Building layer
             mapView.map().layers().add(new BuildingLayer(mapView.map(), tileLayer));
@@ -179,7 +224,7 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
             // Render theme
             mapView.map().setTheme(VtmThemes.DEFAULT);
             //add set pivot
-            mapView.map().viewport().setMapViewCenter(0.75f);
+            mapView.map().viewport().setMapViewCenter(0.0f, 0.75f);
 
 
             // Scale bar
@@ -259,7 +304,7 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
         symbol = new MarkerSymbol(bitmapPoi, HotspotPlace.CENTER, false);
 
         mMarkerLayer = new ItemizedLayer<>(mapView.map(), new ArrayList<TaxiMarker>(), symbol, this);
-        mapView.map().layers().add(mMarkerLayer);
+
 
         //mMarkerLayer.addItem(new TaxiMarker(1,"theos id", "", new GeoPoint(mLocation.getLatitude(), mLocation.getLongitude()),1,"uno"));
 
@@ -288,8 +333,92 @@ public class GettingStartedMarkerFused extends Activity implements GoogleApiClie
 
         }
 
+
+        //project geojson
+        geoJsonIs=getResources().openRawResource(R.raw.barrios);
+//        VectorDataset data = JeoTest.readGeoJson(geoJsonIs);
+//        Style style = JeoTest.getStyle();
+//        JeoVectorLayer geomap = new JeoVectorLayer(mapView.map(), data, style);
+//        mapView.map().layers().add(geomap);
+
+
+        mVectorLayer=new BarriosLayer(mapView.map(),mContext);
+        FeatureCollection fc=GeoJsonUtils.loadFeatureCollection(geoJsonIs);
+        GeoJsonUtils.addBarrios(mVectorLayer,fc);
+
+//        List<GeoPoint> geoPoints=new ArrayList<GeoPoint>();
+//
+//geoPoints.add(latLong3);
+////geoPoints.add(latLong4);
+//geoPoints.add(latLong6);
+////geoPoints.add(latLong6);
+//geoPoints.add(latLong8);
+////geoPoints.add(latLong8);
+//geoPoints.add(latLong9);
+//        mVectorLayer.add(new BarrioPolygonDrawable(geoPoints,"panamaS"));
+
+//        FeatureCollection fc;
+//        try {
+//            fc=new ObjectMapper().readValue(geoJsonIs,FeatureCollection.class);
+//            String title=fc.getFeatures().get(0).getProperty("name");
+//            Polygon geom=(Polygon)fc.getFeatures().get(0).getGeometry();
+//            List<LngLatAlt>coords=geom.getExteriorRing();
+//            mVectorLayer.add(new BarrioPolygonDrawable(GeoJsonUtils.convertToGeo(coords),title));
+//        } catch (IOException e) {
+//            fc=null;
+//            e.printStackTrace();
+//        }
+
+
+
+        //mVectorLayer.update();
+        mapView.map().layers().add(mVectorLayer);
+
+
+
+        mapView.map().layers().add(mMarkerLayer);
+        //addOverlayLayer(mapView.map().layers());
+
+
+
         prepareCompassRecalibrateDialog();
     }
+    //polygon test
+//    void addOverlayLayer(Layers layer){
+//        Paint paintFill = createPaint(
+//                AndroidGraphicFactory.INSTANCE.createColor(Color.GREEN), 2,
+//                Style.FILL);
+//        Paint paintStroke = createPaint(
+//                AndroidGraphicFactory.INSTANCE.createColor(Color.BLACK), 2,
+//                Style.STROKE);
+//        Polygon polygon = new Polygon(paintFill, paintStroke, AndroidGraphicFactory.INSTANCE) {
+//            @Override
+//            public boolean onTap(LatLong tapLatLong, Point layerXY, Point tapXY) {
+//                if (contains(tapLatLong)) {
+//                    Toast.makeText(mContext, "Panama Soberana\n" + tapLatLong, Toast.LENGTH_SHORT).show();
+//                    return true;
+//                }
+//                return false;
+//            }
+//        };
+//        List<LatLong> latLongs3 = new ArrayList<>();
+//        latLongs3.add(latLong3);
+//        latLongs3.add(latLong4);
+//        latLongs3.add(latLong5);
+//        latLongs3.add(latLong6);
+//        latLongs3.add(latLong7);
+//        latLongs3.add(latLong8);
+//        latLongs3.add(latLong9);
+//        polygon.setPoints(latLongs3);
+//        //layer.add(polygon);
+//    }
+//    static Paint createPaint(int color, int strokeWidth, Style style) {
+//        Paint paint = AndroidGraphicFactory.INSTANCE.createPaint();
+//        paint.setColor(color);
+//        paint.setStrokeWidth(strokeWidth);
+//        paint.setStyle(style);
+//        return paint;
+//    }
 
     AnimatedVectorDrawableCompat advCompat;
     AnimatedVectorDrawable adv;
